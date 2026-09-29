@@ -26,6 +26,7 @@
 /.kotlin/sessions
 /build
 /captures
+/artifacts/
 /local.properties
 .idea/copilot*
 /.idea
