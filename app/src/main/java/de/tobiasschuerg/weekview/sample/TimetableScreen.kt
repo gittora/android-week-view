@@ -24,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -67,6 +68,13 @@ private val Days = listOf("月", "火", "水", "木", "金", "土", "日")
 private const val SLOT_STRIDE = 10
 private val Condensed = FontFamily(Typeface.create("sans-serif-condensed", Typeface.NORMAL))
 private val Headline = FontFamily(Typeface.create("sans-serif-thin", Typeface.NORMAL))
+private val Display = FontFamily(Typeface.create("sans-serif-condensed-light", Typeface.NORMAL))
+private val TermPattern = Regex("^(\\d{4})年度 (前期|後期)$")
+
+private fun termLabel(term: String): String =
+    TermPattern.matchEntire(term)?.let { match ->
+        "${match.groupValues[1]} ${if (match.groupValues[2] == "前期") "First" else "Second"}"
+    } ?: term
 
 @Composable
 fun TimetableScreen(store: TimetableStore) {
@@ -91,22 +99,21 @@ fun TimetableScreen(store: TimetableStore) {
             ) {
                 Column(Modifier.width(boardWidth).padding(horizontal = 22.dp)) {
                     Spacer(Modifier.height(42.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "TIMETABLE",
                             color = Color.White,
-                            fontSize = 80.sp,
-                            lineHeight = 88.sp,
                             fontFamily = Headline,
                             fontWeight = FontWeight.ExtraLight,
                             letterSpacing = (-2).sp,
-                            style = TextStyle(textGeometricTransform = TextGeometricTransform(scaleX = 0.48f)),
+                            style = TextStyle(textGeometricTransform = TextGeometricTransform(scaleX = 0.70f)),
+                            autoSize = TextAutoSize.StepBased(minFontSize = 40.sp, maxFontSize = 120.sp, stepSize = 1.sp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
+                            modifier = Modifier.weight(1f),
                         )
-                        Spacer(Modifier.width(14.dp))
-                        Box(Modifier.size(39.dp).border(1.2.dp, Color.White, CircleShape))
+                        Spacer(Modifier.width(8.dp))
+                        Box(Modifier.size(boardWidth * 0.14f).border(1.2.dp, Color.White, CircleShape))
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.weight(1f)) {
@@ -117,7 +124,7 @@ fun TimetableScreen(store: TimetableStore) {
                             }
                         }
                         TextButton(onClick = { showSettings = true }) {
-                            Text("設定", color = Color.White)
+                            Text("Setting", color = Color.White, fontFamily = Display, fontSize = 21.sp)
                         }
                     }
                     Spacer(Modifier.height(20.dp))
@@ -190,12 +197,12 @@ private fun TermSelector(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                term,
+                termLabel(term),
                 color = Color.White,
-                fontSize = 20.sp,
-                fontFamily = Condensed,
+                fontSize = 24.sp,
+                fontFamily = Display,
                 fontWeight = FontWeight.Light,
-                style = TextStyle(textGeometricTransform = TextGeometricTransform(scaleX = 0.82f)),
+                letterSpacing = 0.4.sp,
             )
             Spacer(Modifier.width(14.dp))
             Canvas(Modifier.size(13.dp, 8.dp)) {
@@ -207,7 +214,14 @@ private fun TermSelector(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             terms.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option, fontWeight = if (option == term) FontWeight.Bold else FontWeight.Normal) },
+                    text = {
+                        Text(
+                            termLabel(option),
+                            fontFamily = Display,
+                            fontSize = 19.sp,
+                            fontWeight = if (option == term) FontWeight.Medium else FontWeight.Light,
+                        )
+                    },
                     onClick = {
                         onSelect(option)
                         expanded = false
