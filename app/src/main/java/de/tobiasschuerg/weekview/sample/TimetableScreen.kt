@@ -63,8 +63,8 @@ import androidx.compose.ui.unit.sp
 
 val TimetableBlue = Color(0xFF1008FF)
 private val Ink = Color(0xFF111116)
-private val Days = listOf("月", "火", "水", "木", "金", "土")
-private val PeriodTimes = listOf("9:00", "10:45", "13:00", "14:40", "16:35")
+private val Days = listOf("月", "火", "水", "木", "金", "土", "日")
+private const val SLOT_STRIDE = 10
 private val Condensed = FontFamily(Typeface.create("sans-serif-condensed", Typeface.NORMAL))
 private val Headline = FontFamily(Typeface.create("sans-serif-thin", Typeface.NORMAL))
 
@@ -73,6 +73,8 @@ fun TimetableScreen(store: TimetableStore) {
     var term by rememberSaveable { mutableStateOf(store.selectedTerm()) }
     var courses by remember(term) { mutableStateOf(store.load(term)) }
     var editingSlot by rememberSaveable { mutableStateOf<Int?>(null) }
+    var config by remember { mutableStateOf(store.loadConfig()) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
 
     Box(
         modifier = Modifier.fillMaxSize().background(TimetableBlue).safeDrawingPadding(),
@@ -80,8 +82,9 @@ fun TimetableScreen(store: TimetableStore) {
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val viewportWidth = maxWidth
-            val boardWidth = maxWidth.coerceAtLeast(360.dp).coerceAtMost(720.dp)
-            val rowHeight = ((maxHeight - 298.dp) / 5).coerceIn(96.dp, 138.dp) * LocalDensity.current.fontScale.coerceAtLeast(1f)
+            val boardWidth = maxWidth.coerceAtLeast(if (config.dayCount == 7) 410.dp else 360.dp).coerceAtMost(720.dp)
+            val rowHeight =
+                ((maxHeight - 298.dp) / config.periodTimes.size).coerceIn(96.dp, 138.dp) * LocalDensity.current.fontScale.coerceAtLeast(1f)
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -105,10 +108,17 @@ fun TimetableScreen(store: TimetableStore) {
                         Spacer(Modifier.width(14.dp))
                         Box(Modifier.size(39.dp).border(1.2.dp, Color.White, CircleShape))
                     }
-                    TermSelector(term, (store.terms + term).distinct().sorted()) { selected ->
-                        store.selectTerm(selected)
-                        term = selected
-                        editingSlot = null
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) {
+                            TermSelector(term, (store.terms + term).distinct().sorted()) { selected ->
+                                store.selectTerm(selected)
+                                term = selected
+                                editingSlot = null
+                            }
+                        }
+                        TextButton(onClick = { showSettings = true }) {
+                            Text("設定", color = Color.White)
+                        }
                     }
                     Spacer(Modifier.height(20.dp))
                 }
@@ -116,9 +126,10 @@ fun TimetableScreen(store: TimetableStore) {
                     Box(Modifier.width(viewportWidth.coerceAtLeast(boardWidth)), contentAlignment = Alignment.Center) {
                         TimetableGrid(
                             courses = courses,
+                            config = config,
                             rowHeight = rowHeight,
                             modifier = Modifier.width(boardWidth).padding(horizontal = 6.dp),
-                            onCellClick = { day, period -> editingSlot = day * 5 + period },
+                            onCellClick = { day, period -> editingSlot = day * SLOT_STRIDE + period },
                         )
                     }
                 }
@@ -132,14 +143,28 @@ fun TimetableScreen(store: TimetableStore) {
         }
     }
 
+    if (showSettings) {
+        TimetableSettingsDialog(
+            config = config,
+            onDismiss = { showSettings = false },
+            onSave = { updated ->
+                store.saveConfig(updated)
+                config = updated
+                editingSlot = null
+                showSettings = false
+            },
+        )
+    }
+
     editingSlot?.let { slot ->
-        val day = slot / 5
-        val period = slot % 5
+        val day = slot / SLOT_STRIDE
+        val period = slot % SLOT_STRIDE
         val course = courses.firstOrNull { it.day == day && it.period == period }
         CourseEditor(
             term = term,
             day = day,
             period = period,
+            startTime = config.periodTimes[period],
             course = course,
             onDismiss = { editingSlot = null },
             onSave = { updated ->
@@ -196,6 +221,7 @@ private fun TermSelector(
 @Composable
 private fun TimetableGrid(
     courses: List<Course>,
+    config: TimetableConfig,
     rowHeight: Dp,
     modifier: Modifier = Modifier,
     onCellClick: (Int, Int) -> Unit,
@@ -204,7 +230,7 @@ private fun TimetableGrid(
     Column(modifier.border(0.6.dp, line)) {
         Row(Modifier.fillMaxWidth().height(42.dp)) {
             Box(Modifier.width(42.dp).fillMaxHeight().border(0.3.dp, line))
-            Days.forEach { day ->
+            Days.take(config.dayCount).forEach { day ->
                 Box(
                     Modifier.weight(1f).fillMaxHeight().border(0.3.dp, line),
                     contentAlignment = Alignment.Center,
@@ -213,7 +239,7 @@ private fun TimetableGrid(
                 }
             }
         }
-        PeriodTimes.forEachIndexed { period, time ->
+        config.periodTimes.forEachIndexed { period, time ->
             Row(Modifier.fillMaxWidth().height(rowHeight)) {
                 Column(
                     Modifier.width(42.dp).fillMaxHeight().border(0.3.dp, line),
@@ -224,7 +250,7 @@ private fun TimetableGrid(
                     Spacer(Modifier.height(3.dp))
                     Text(time, color = Color.White, fontFamily = Condensed, fontSize = 14.sp, fontWeight = FontWeight.Light)
                 }
-                Days.forEachIndexed { day, label ->
+                Days.take(config.dayCount).forEachIndexed { day, label ->
                     val course = courses.firstOrNull { it.day == day && it.period == period }
                     Box(
                         Modifier.weight(1f).fillMaxHeight().border(0.3.dp, line)
@@ -289,6 +315,7 @@ private fun CourseEditor(
     term: String,
     day: Int,
     period: Int,
+    startTime: String,
     course: Course?,
     onDismiss: () -> Unit,
     onSave: (Course?) -> Unit,
@@ -305,7 +332,7 @@ private fun CourseEditor(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("$term · ${PeriodTimes[period]}〜", style = MaterialTheme.typography.bodyMedium)
+                Text("$term · $startTime〜", style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it.take(80) },

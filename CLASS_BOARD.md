@@ -6,9 +6,12 @@
 - 学期名をタップすると前期・後期を切り替えます。
 - マスをタップして授業名・教室・担当教員を登録、編集、削除できます。
 - 授業と選択中の学期は端末内に保存します。
+- 学期名の横の「設定」から、表示曜日（月〜金・月〜土・月〜日）、時限数（4〜8限）、各時限の開始時刻を変更できます。
+- 開始時刻は `09:00` のような24時間表記で、早い順に入力します。設定は全学期共通で端末内に保存します。
+- 表示する曜日・時限を減らしても授業は削除されず、表示を戻すと再び確認できます。
 
 Android Studio でこのフォルダを開き、`app` を実行してください。元プロジェクトに合わせて Android SDK 37 と Java 17 ツールチェーンを使用します。APK のビルドは `gradlew.bat :app:assembleDebug` です。
 
-画面は `app/src/main/java/de/tobiasschuerg/weekview/sample/TimetableScreen.kt`、保存処理は同じフォルダの `TimetableStore.kt` にあります。現時点では曜日・時限数・開始時刻は固定です。通知、学校システム連携、クラウド同期は含みません。
+画面は `app/src/main/java/de/tobiasschuerg/weekview/sample/TimetableScreen.kt`、設定画面は `TimetableSettingsDialog.kt`、保存処理は `TimetableStore.kt` にあります。通知、学校システム連携、クラウド同期は含みません。
 
 元プロジェクト: https://github.com/tobiasschuerg/android-week-view （MIT。LICENSEを保持）

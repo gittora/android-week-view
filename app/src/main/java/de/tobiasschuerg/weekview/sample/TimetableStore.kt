@@ -9,6 +9,7 @@ class TimetableStore(
     context: Context,
 ) {
     private val preferences = context.getSharedPreferences("class_board", Context.MODE_PRIVATE)
+    private val configKey = "timetable_config"
     private val today = LocalDate.now()
     private val academicYear = today.year - if (today.monthValue < 4) 1 else 0
 
@@ -24,6 +25,33 @@ class TimetableStore(
 
     fun selectTerm(term: String) {
         preferences.edit().putString("selected_term", term).apply()
+    }
+
+    fun loadConfig(): TimetableConfig {
+        val saved = preferences.getString(configKey, null) ?: return TimetableConfig()
+        return try {
+            val data = JSONObject(saved)
+            val config =
+                TimetableConfig(
+                    dayCount = data.getInt("dayCount"),
+                    periodTimes =
+                        data.getJSONArray("periodTimes").let { times ->
+                            List(times.length()) { index -> times.getString(index) }
+                        },
+                )
+            if (config.validationError() == null) config else TimetableConfig()
+        } catch (_: Exception) {
+            TimetableConfig()
+        }
+    }
+
+    fun saveConfig(config: TimetableConfig) {
+        require(config.validationError() == null) { config.validationError() ?: "時間割設定が不正です。" }
+        val data =
+            JSONObject()
+                .put("dayCount", config.dayCount)
+                .put("periodTimes", JSONArray(config.periodTimes))
+        preferences.edit().putString(configKey, data.toString()).apply()
     }
 
     fun load(term: String): List<Course> {
