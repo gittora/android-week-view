@@ -1,6 +1,7 @@
 package de.tobiasschuerg.weekview.sample
 
 import android.graphics.Typeface
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -41,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
@@ -203,18 +206,35 @@ private fun TimetableMenu(
                     expanded = !expanded
                 },
         )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.width(224.dp),
+            shape = RectangleShape,
+            containerColor = TimetableBlue,
+            tonalElevation = 0.dp,
+            shadowElevation = 8.dp,
+            border = BorderStroke(0.8.dp, Color.White),
+        ) {
             if (page != "main") {
                 DropdownMenuItem(
-                    text = { Text("‹ Back", fontFamily = Display, fontSize = 19.sp) },
+                    text = { Text("‹ Back", color = Color.White, fontFamily = Display, fontSize = 19.sp) },
                     onClick = { page = "main" },
                 )
+                HorizontalDivider(color = Color.White.copy(alpha = 0.5f), thickness = 0.5.dp)
             }
             when (page) {
                 "year" ->
                     years.forEach { option ->
                         DropdownMenuItem(
-                            text = { Text("${if (option == year) "✓ " else ""}$option", fontFamily = Display, fontSize = 21.sp) },
+                            text = {
+                                Text(
+                                    "${if (option == year) "✓ " else ""}$option",
+                                    color = Color.White,
+                                    fontFamily = Display,
+                                    fontSize = 24.sp,
+                                )
+                            },
                             onClick = {
                                 onSelect("${option}年度 $semester")
                                 expanded = false
@@ -224,7 +244,14 @@ private fun TimetableMenu(
                 "semester" ->
                     listOf("前期" to "First", "後期" to "Second").forEach { (value, label) ->
                         DropdownMenuItem(
-                            text = { Text("${if (value == semester) "✓ " else ""}$label", fontFamily = Display, fontSize = 21.sp) },
+                            text = {
+                                Text(
+                                    "${if (value == semester) "✓ " else ""}$label",
+                                    color = Color.White,
+                                    fontFamily = Display,
+                                    fontSize = 24.sp,
+                                )
+                            },
                             onClick = {
                                 onSelect("${year}年度 $value")
                                 expanded = false
@@ -233,15 +260,17 @@ private fun TimetableMenu(
                     }
                 else -> {
                     DropdownMenuItem(
-                        text = { Text("Year · $year  ›", fontFamily = Display, fontSize = 21.sp) },
+                        text = { Text("Year · $year  ›", color = Color.White, fontFamily = Display, fontSize = 24.sp) },
                         onClick = { page = "year" },
                     )
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.5f), thickness = 0.5.dp)
                     DropdownMenuItem(
-                        text = { Text("Semester · $semesterLabel  ›", fontFamily = Display, fontSize = 21.sp) },
+                        text = { Text("Semester · $semesterLabel  ›", color = Color.White, fontFamily = Display, fontSize = 24.sp) },
                         onClick = { page = "semester" },
                     )
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.5f), thickness = 0.5.dp)
                     DropdownMenuItem(
-                        text = { Text("Setting", fontFamily = Display, fontSize = 21.sp) },
+                        text = { Text("Setting", color = Color.White, fontFamily = Display, fontSize = 24.sp) },
                         onClick = {
                             expanded = false
                             onSettings()
