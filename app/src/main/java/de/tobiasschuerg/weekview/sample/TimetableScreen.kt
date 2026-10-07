@@ -1,7 +1,6 @@
 package de.tobiasschuerg.weekview.sample
 
 import android.graphics.Typeface
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,9 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
@@ -113,19 +110,17 @@ fun TimetableScreen(store: TimetableStore) {
                             modifier = Modifier.weight(1f),
                         )
                         Spacer(Modifier.width(8.dp))
-                        Box(Modifier.size(boardWidth * 0.14f).border(1.2.dp, Color.White, CircleShape))
-                    }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.weight(1f)) {
-                            TermSelector(term, (store.terms + term).distinct().sorted()) { selected ->
+                        TimetableMenu(
+                            term = term,
+                            terms = (store.terms + term).distinct().sorted(),
+                            diameter = (boardWidth * 0.14f).coerceAtLeast(48.dp),
+                            onSelect = { selected ->
                                 store.selectTerm(selected)
                                 term = selected
                                 editingSlot = null
-                            }
-                        }
-                        TextButton(onClick = { showSettings = true }) {
-                            Text("Setting", color = Color.White, fontFamily = Display, fontSize = 21.sp)
-                        }
+                            },
+                            onSettings = { showSettings = true },
+                        )
                     }
                     Spacer(Modifier.height(20.dp))
                 }
@@ -185,48 +180,74 @@ fun TimetableScreen(store: TimetableStore) {
 }
 
 @Composable
-private fun TermSelector(
+private fun TimetableMenu(
     term: String,
     terms: List<String>,
+    diameter: Dp,
     onSelect: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var page by remember { mutableStateOf("main") }
+    val current = TermPattern.matchEntire(term)
+    val year = current?.groupValues?.get(1) ?: terms.firstNotNullOf { TermPattern.matchEntire(it)?.groupValues?.get(1) }
+    val semester = current?.groupValues?.get(2) ?: "前期"
+    val years = terms.mapNotNull { TermPattern.matchEntire(it)?.groupValues?.get(1) }.distinct().sorted()
+    val semesterLabel = if (semester == "前期") "First" else "Second"
     Box {
-        Row(
-            modifier = Modifier.height(48.dp).clickable(role = Role.Button) { expanded = true },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                termLabel(term),
-                color = Color.White,
-                fontSize = 24.sp,
-                fontFamily = Display,
-                fontWeight = FontWeight.Light,
-                letterSpacing = 0.4.sp,
-            )
-            Spacer(Modifier.width(14.dp))
-            Canvas(Modifier.size(13.dp, 8.dp)) {
-                val middle = Offset(size.width / 2, size.height)
-                drawLine(Color.White, Offset.Zero, middle, strokeWidth = 1.2.dp.toPx(), cap = StrokeCap.Round)
-                drawLine(Color.White, middle, Offset(size.width, 0f), strokeWidth = 1.2.dp.toPx(), cap = StrokeCap.Round)
-            }
-        }
+        Box(
+            Modifier.size(diameter).border(1.2.dp, Color.White, CircleShape)
+                .semantics { contentDescription = "メニュー、${termLabel(term)}、年度・学期・設定" }
+                .clickable(role = Role.Button) {
+                    page = "main"
+                    expanded = !expanded
+                },
+        )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            terms.forEach { option ->
+            if (page != "main") {
                 DropdownMenuItem(
-                    text = {
-                        Text(
-                            termLabel(option),
-                            fontFamily = Display,
-                            fontSize = 19.sp,
-                            fontWeight = if (option == term) FontWeight.Medium else FontWeight.Light,
-                        )
-                    },
-                    onClick = {
-                        onSelect(option)
-                        expanded = false
-                    },
+                    text = { Text("‹ Back", fontFamily = Display, fontSize = 19.sp) },
+                    onClick = { page = "main" },
                 )
+            }
+            when (page) {
+                "year" ->
+                    years.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text("${if (option == year) "✓ " else ""}$option", fontFamily = Display, fontSize = 21.sp) },
+                            onClick = {
+                                onSelect("${option}年度 $semester")
+                                expanded = false
+                            },
+                        )
+                    }
+                "semester" ->
+                    listOf("前期" to "First", "後期" to "Second").forEach { (value, label) ->
+                        DropdownMenuItem(
+                            text = { Text("${if (value == semester) "✓ " else ""}$label", fontFamily = Display, fontSize = 21.sp) },
+                            onClick = {
+                                onSelect("${year}年度 $value")
+                                expanded = false
+                            },
+                        )
+                    }
+                else -> {
+                    DropdownMenuItem(
+                        text = { Text("Year · $year  ›", fontFamily = Display, fontSize = 21.sp) },
+                        onClick = { page = "year" },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Semester · $semesterLabel  ›", fontFamily = Display, fontSize = 21.sp) },
+                        onClick = { page = "semester" },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Setting", fontFamily = Display, fontSize = 21.sp) },
+                        onClick = {
+                            expanded = false
+                            onSettings()
+                        },
+                    )
+                }
             }
         }
     }
